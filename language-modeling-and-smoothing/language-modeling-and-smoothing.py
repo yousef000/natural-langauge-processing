@@ -27,18 +27,29 @@ def get_freq(freqs, test_data):
 
 
 def get_bi_count(test_data):
-    # compute the count of bigram C(x,y)
+    ## compute the count of bigram C(x,y)
     bigram_count = {}
     for sentence in test_data:
         words = sentence.split()
         for i in range(len(words)):
+            ## if word is unknown then change token to UNK
+            if words[i] not in freqs:
+                words[i] = "UNK"
+            if i != len(words)-1 and words[i+1] not in freqs:
+                words[i+1] = "UNK"
+            
+            ## if last word
             if i == len(words)-1:
-                break
+                if (words[i], "<STOP>") in bigram_count:
+                    bigram_count[(words[i], "<STOP>")] += 1
+                else:
+                    bigram_count[(words[i], "<STOP>")] = 1
+                    
             elif (words[i], words[i+1]) in bigram_count:
                 bigram_count[(words[i], words[i+1])] += 1
+                
             else:
                 bigram_count[(words[i], words[i+1])] = 1
-    print(bigram_count)
     return bigram_count
 
 
@@ -57,7 +68,7 @@ def get_bi_model(bigram_count):
             probability = bigram_count[key]/float(freqs[key[0]])
         else:
             probability = bigram_count[key]/float(freqs["UNK"])
-
+        
         if key[0] in bigram_model:
             bigram_model[key[0]].append({
                 key[1]: probability
@@ -79,20 +90,20 @@ if __name__ == '__main__':
         "<STOP>": 0
     }
     get_freq(freqs, test_data)
-    print('freqs\n', freqs)
     print('len freqs\n', len(freqs))
 
-    # bigram_count = get_bi_count(test_data)
+    bigram_count = get_bi_count(test_data)
     # print('bigram count\n', bigram_count)
 
-    # bigram_model = get_bi_model(bigram_count)
+    bigram_model = get_bi_model(bigram_count)
 
     # print("bigram model: \n", bigram_model)
 
-    # total = 0
-
-    # for key in bigram_model['Having']:
-    #     for k in key:
-    #         total += key[k]
+    total = 0
+    for i in bigram_model:
+        for j in bigram_model[i]:
+            for k in j:
+                total += j[k]
+    print(total)
 
     # print('total', total)
