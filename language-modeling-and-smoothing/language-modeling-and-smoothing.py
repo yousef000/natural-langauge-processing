@@ -9,8 +9,8 @@ import math
 # unique tokens (types).
 
 
-def get_freq(freqs, test_data):
-    for sentence in test_data:
+def get_freq(freqs, data):
+    for sentence in data:
         freqs["<STOP>"] += 1
         for word in sentence.split():
             if word in freqs:
@@ -25,30 +25,19 @@ def get_freq(freqs, test_data):
     print(len(freqs))
     return freqs
 
-def get_uni_model(test_data, freqs):
+def get_uni_model(data, freqs):
     unigram_model = {}
-    total_freq = 0
+    total_freq = sum(freqs.values())
+    
     for i in freqs:
-        total_freq += freqs[i]
-    for sentence in test_data:
-        words = sentence.split()
-        for i in range(len(words)):
-            if words[i] in freqs:
-                probability = freqs[words[i]]/total_freq
-            else:
-                probability = freqs['UNK']/total_freq
-
-            if words[i] in unigram_model:
-                unigram_model[words[i]] += probability
-            else:
-                unigram_model[words[i]] = probability
+        unigram_model[i] = freqs[i]/total_freq
     return unigram_model
 
 
-def get_bi_count(test_data, freqs):
+def get_bi_count(data, freqs):
     ## compute the count of bigram C(x,y)
     bigram_count = {}
-    for sentence in test_data:
+    for sentence in data:
         words = sentence.split()
         for i in range(len(words)):
             ## if word is unknown then change token to UNK
@@ -74,7 +63,8 @@ def get_bi_model(bigram_count, freqs):
     bigram_model = {}
     probability = 0.0
     for key in bigram_count:
-
+        
+        
         # To compute bigram probability of a word y (key[1]) given
         # previous word x (key[0]), divide the count of bigram
         # C(x,y) and sum of all bigrams that share the same first word x
@@ -87,19 +77,19 @@ def get_bi_model(bigram_count, freqs):
             probability = bigram_count[key]/float(freqs["UNK"])
         
         if key[0] in bigram_model:
-            bigram_model[key[0]].append({
+            bigram_model[key[0]].update({
                 key[1]: probability
             })
         else:
-            bigram_model[key[0]] = [{
+            bigram_model[key[0]] = {
                 key[1]: probability
-            }]
+            }
     return bigram_model
 
-def get_tri_count(test_data, freqs):
+def get_tri_count(data, freqs):
     ## compute the count of trigram C(x,y,z)
     trigram_count = {}
-    for sentence in test_data:
+    for sentence in data:
         words = sentence.split()
         for i in range(len(words)):
             ## if word is unknown then change token to UNK
@@ -146,40 +136,76 @@ def get_tri_model(trigram_count, bigram_count):
                 key[2]: probability
             }]
     return trigram_model
+
+# 1/M ∑∑log2(p(xij))
+    # Where M is the same. The outer sum is the same as before, 
+    # summing over all sentences in the file (assuming m sentences). 
+    # The second sum sums over all tokens in the current sentence 
+    # (this can be implemented as a nested for loop) (assuming k tokens 
+    # in a sentence, this will obviously be different in each sentence). 
+    # p(xij) is the probability of the current token in the current 
+    # sentence, which is given by the n-gram MLE for the n you are using
     
+def get_uni_pp(freqs, data):
+    total_freq = sum(freqs.values())
+    l = 0
+    for i in data:
+        for j in i.split():
+            if j in freqs:
+                l += math.log(unigram_model[j])
+            else:
+                l += math.log(unigram_model["UNK"])
+    l *= 1/total_freq
+    unigram_pp = pow(2, -l)
+    return unigram_pp
+
+def get_bi_pp(freqs, data):
+    l = 0
+    for sentence in data:
+        words = sentence.split()
+        for i in range(len(words)):
+            ## if word is unknown then change token to UNK
+            if words[i] not in freqs:
+                words[i] = "UNK"
+            if i != len(words)-1 and words[i+1] not in freqs:
+                words[i+1] = "UNK"
+
+            if i != len(words)-1:
+                l += math.log(bigram_model[words[i]][words[i+1]])
+            else:
+                l += math.log(bigram_model[words[i]]["<STOP>"])
+            
+    l *= 1/sum(freqs.values())
+    bigram_pp = pow(2, -l )
+    return bigram_pp
+
 if __name__ == '__main__':
 
     with open('data/1b_benchmark.train.tokens') as my_file:
-        test_data = my_file.readlines()
+        training_data = my_file.readlines()
 
     freqs = {
         "UNK": 0,
         "<STOP>": 0
     }
-    get_freq(freqs, test_data)
+    get_freq(freqs, training_data)
     print('len freqs\n', len(freqs))
     
-    unigram_model = get_uni_model(test_data, freqs)
+    unigram_model = get_uni_model(training_data, freqs)
 
-    bigram_count = get_bi_count(test_data, freqs)
+    bigram_count = get_bi_count(training_data, freqs)
     # print('bigram count\n', bigram_count)
     bigram_model = get_bi_model(bigram_count, freqs)
     # print("bigram model: \n", bigram_model)
 
-    trigram_count = get_tri_count(test_data, freqs)
+    trigram_count = get_tri_count(training_data, freqs)
     trigram_model = get_tri_model(trigram_count, bigram_count)
     
-    unigram_pp = 1
-    for i in unigram_model:
-        unigram_pp *= 1/unigram_model[i]
-    unigram_pp = pow(unigram_pp, 1/float(len(unigram_model)))
+    unigram_pp = get_uni_pp(freqs, training_data)
     print(unigram_pp)
-
-    trigram_pp = 1
-    for i in trigram_model:
-        for j in trigram_model[i]:
-            for k in j:
-                trigram_pp *= 1/j[k]
-    trigram_pp = pow(trigram_pp, 1/float(len(trigram_model)))
-    print(trigram_pp)
-    # print('total', total)
+    bigram_pp = get_bi_pp(freqs, training_data)
+    print("bigram_pp", bigram_pp)
+    total = 0
+    for i in unigram_model:
+        total += unigram_model[i]
+    print('total', total)
