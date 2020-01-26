@@ -128,13 +128,13 @@ def get_tri_model(trigram_count, bigram_count):
         probability = trigram_count[key]/float(bigram_count[(key[0], key[1])])
         
         if (key[0], key[1]) in trigram_model:
-            trigram_model[(key[0], key[1])].append({
+            trigram_model[(key[0], key[1])].update({
                 key[2]: probability
             })
         else:
-            trigram_model[(key[0], key[1])] = [{
+            trigram_model[(key[0], key[1])] = {
                 key[2]: probability
-            }]
+            }
     return trigram_model
 
 # 1/M ∑∑log2(p(xij))
@@ -145,7 +145,7 @@ def get_tri_model(trigram_count, bigram_count):
     # in a sentence, this will obviously be different in each sentence). 
     # p(xij) is the probability of the current token in the current 
     # sentence, which is given by the n-gram MLE for the n you are using
-    
+
 def get_uni_pp(freqs, data):
     total_freq = sum(freqs.values())
     l = 0
@@ -179,6 +179,31 @@ def get_bi_pp(freqs, data):
     bigram_pp = pow(2, -l )
     return bigram_pp
 
+def get_tri_pp(freqs, data):
+    l = 0
+    for sentence in data:
+        words = sentence.split()
+        for i in range(len(words)):
+            ## if word is unknown then change token to UNK
+            if words[i] not in freqs:
+                words[i] = "UNK"
+            if i != len(words)-1 and words[i+1] not in freqs:
+                words[i+1] = "UNK"
+            if i != len(words)-2 and i != len(words)-1 and words[i+2] not in freqs:
+                words[i+2] = "UNK"
+            
+            ## if last word
+            if i == len(words)-1:
+                break
+            if i == len(words)-2:
+                l += math.log(trigram_model[(words[i], words[i+1])]["<STOP>"])
+            else:
+                l += math.log(trigram_model[(words[i], words[i+1])][words[i+2]])
+            
+    l *= 1/sum(freqs.values())
+    trigram_pp = pow(2, -l )
+    return trigram_pp
+
 if __name__ == '__main__':
 
     with open('data/1b_benchmark.train.tokens') as my_file:
@@ -202,9 +227,11 @@ if __name__ == '__main__':
     trigram_model = get_tri_model(trigram_count, bigram_count)
     
     unigram_pp = get_uni_pp(freqs, training_data)
-    print(unigram_pp)
+    print("unigram_pp", unigram_pp)
     bigram_pp = get_bi_pp(freqs, training_data)
     print("bigram_pp", bigram_pp)
+    trigram_pp = get_tri_pp(freqs, training_data)
+    print("trigram_pp", trigram_pp)
     total = 0
     for i in unigram_model:
         total += unigram_model[i]
