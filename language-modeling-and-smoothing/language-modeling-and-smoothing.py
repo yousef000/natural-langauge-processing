@@ -25,8 +25,27 @@ def get_freq(freqs, test_data):
     print(len(freqs))
     return freqs
 
+def get_uni_model(test_data, freqs):
+    unigram_model = {}
+    total_freq = 0
+    for i in freqs:
+        total_freq += freqs[i]
+    for sentence in test_data:
+        words = sentence.split()
+        for i in range(len(words)):
+            if words[i] in freqs:
+                probability = freqs[words[i]]/total_freq
+            else:
+                probability = freqs['UNK']/total_freq
+            if words[i] in unigram_model:
+                unigram_model[words[i]] += probability
+            else:
+                unigram_model[words[i]] = probability
+ 
+    return unigram_model
 
-def get_bi_count(test_data):
+
+def get_bi_count(test_data, freqs):
     ## compute the count of bigram C(x,y)
     bigram_count = {}
     for sentence in test_data:
@@ -43,17 +62,15 @@ def get_bi_count(test_data):
                 if (words[i], "<STOP>") in bigram_count:
                     bigram_count[(words[i], "<STOP>")] += 1
                 else:
-                    bigram_count[(words[i], "<STOP>")] = 1
-                    
+                    bigram_count[(words[i], "<STOP>")] = 1     
             elif (words[i], words[i+1]) in bigram_count:
                 bigram_count[(words[i], words[i+1])] += 1
-                
             else:
                 bigram_count[(words[i], words[i+1])] = 1
     return bigram_count
 
 
-def get_bi_model(bigram_count):
+def get_bi_model(bigram_count, freqs):
     bigram_model = {}
     probability = 0.0
     for key in bigram_count:
@@ -79,7 +96,7 @@ def get_bi_model(bigram_count):
             }]
     return bigram_model
 
-def get_tri_count(test_data):
+def get_tri_count(test_data, freqs):
     ## compute the count of trigram C(x,y,z)
     trigram_count = {}
     for sentence in test_data:
@@ -97,19 +114,17 @@ def get_tri_count(test_data):
             if i == len(words)-1:
                 break
             if i == len(words)-2:
-                if (words[i+1], "<STOP>") in trigram_count:
+                if (words[i], words[i+1], "<STOP>") in trigram_count:
                     trigram_count[(words[i], words[i+1], "<STOP>")] += 1
                 else:
-                    trigram_count[(words[i], words[i+1], "<STOP>")] = 1
-                    
+                    trigram_count[(words[i], words[i+1], "<STOP>")] = 1 
             elif (words[i], words[i+1], words[i+2]) in trigram_count:
                 trigram_count[(words[i], words[i+1], words[i+2])] += 1
-                
             else:
                 trigram_count[(words[i], words[i+1], words[i+2])] = 1
     return trigram_count
 
-def get_tri_model(trigram_count):
+def get_tri_model(trigram_count, bigram_count):
     trigram_model = {}
     probability = 0.0
     for key in trigram_count:
@@ -119,21 +134,19 @@ def get_tri_model(trigram_count):
         # C(x,y,z) and sum of all trigrams that share the same first word x
         # and y which means bigram_count of x and y
 
-        # whether word is OOV or not
-        if key[0] in freqs:
-            probability = bigram_count[key]/float(freqs[key[0]])
-        else:
-            probability = bigram_count[key]/float(freqs["UNK"])
+        # don't need to check for OOV since it was taken care in bi_count and tri_count
+        probability = trigram_count[key]/float(bigram_count[(key[0], key[1])])
         
-        if key[0] in bigram_model:
-            bigram_model[key[0]].append({
-                key[1]: probability
+        if (key[0], key[1]) in trigram_model:
+            trigram_model[(key[0], key[1])].append({
+                key[2]: probability
             })
         else:
-            bigram_model[key[0]] = [{
-                key[1]: probability
+            trigram_model[(key[0], key[1])] = [{
+                key[2]: probability
             }]
-    return bigram_model
+    return trigram_model
+    
 if __name__ == '__main__':
 
     with open('data/1b_benchmark.train.tokens') as my_file:
@@ -145,19 +158,25 @@ if __name__ == '__main__':
     }
     get_freq(freqs, test_data)
     print('len freqs\n', len(freqs))
-
-    # bigram_count = get_bi_count(test_data)
+    
+    unigram_model = get_uni_model(test_data, freqs)
+    bigram_count = get_bi_count(test_data, freqs)
     # print('bigram count\n', bigram_count)
 
-    # bigram_model = get_bi_model(bigram_count)
+    bigram_model = get_bi_model(bigram_count, freqs)
 
     # print("bigram model: \n", bigram_model)
 
-    trigram_count = get_tri_count(test_data)
-    print(trigram_count)
+    trigram_count = get_tri_count(test_data, freqs)
+    trigram_model = get_tri_model(trigram_count, bigram_count)
+    
     total = 0
-    for i in bigram_model:
-        for j in bigram_model[i]:
+    for i in unigram_model:
+        total += unigram_model[i]
+    print(total)
+    total = 0
+    for i in trigram_model:
+        for j in trigram_model[i]:
             for k in j:
                 total += j[k]
     print(total)
