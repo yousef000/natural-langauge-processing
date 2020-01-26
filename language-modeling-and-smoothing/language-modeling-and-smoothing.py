@@ -37,11 +37,11 @@ def get_uni_model(test_data, freqs):
                 probability = freqs[words[i]]/total_freq
             else:
                 probability = freqs['UNK']/total_freq
+
             if words[i] in unigram_model:
                 unigram_model[words[i]] += probability
             else:
                 unigram_model[words[i]] = probability
- 
     return unigram_model
 
 
@@ -160,25 +160,26 @@ if __name__ == '__main__':
     print('len freqs\n', len(freqs))
     
     unigram_model = get_uni_model(test_data, freqs)
+
     bigram_count = get_bi_count(test_data, freqs)
     # print('bigram count\n', bigram_count)
-
     bigram_model = get_bi_model(bigram_count, freqs)
-
     # print("bigram model: \n", bigram_model)
 
     trigram_count = get_tri_count(test_data, freqs)
     trigram_model = get_tri_model(trigram_count, bigram_count)
     
-    total = 0
+    unigram_pp = 1
     for i in unigram_model:
-        total += unigram_model[i]
-    print(total)
-    total = 0
+        unigram_pp *= 1/unigram_model[i]
+    unigram_pp = pow(unigram_pp, 1/float(len(unigram_model)))
+    print(unigram_pp)
+
+    trigram_pp = 1
     for i in trigram_model:
         for j in trigram_model[i]:
             for k in j:
-                total += j[k]
-    print(total)
-
+                trigram_pp *= 1/j[k]
+    trigram_pp = pow(trigram_pp, 1/float(len(trigram_model)))
+    print(trigram_pp)
     # print('total', total)
