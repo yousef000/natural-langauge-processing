@@ -17,12 +17,13 @@ def get_freq(freqs, data):
                 freqs[word] += 1
             else:
                 freqs[word] = 1
+    print(sum(freqs.values()))
 
     remove = [key for key in freqs if freqs[key] < 3 and key != "UNK"]
     for key in remove:
         del freqs[key]
         freqs["UNK"] += 1
-    print(len(freqs))
+    print(freqs["UNK"])
     return freqs
 
 def get_uni_model(data, freqs):
@@ -63,8 +64,7 @@ def get_bi_model(bigram_count, freqs):
     bigram_model = {}
     probability = 0.0
     for key in bigram_count:
-        
-        
+
         # To compute bigram probability of a word y (key[1]) given
         # previous word x (key[0]), divide the count of bigram
         # C(x,y) and sum of all bigrams that share the same first word x
@@ -280,11 +280,10 @@ def get_smoothed_pp(data, uni_model, bi_model, tri_model, lambdas):
             except KeyError:
                 tri_prob += 0
 
-            print("uni_prob ", uni_prob)
             probability = (lambdas[0] * uni_prob) + (lambdas[1] * bi_prob) + (lambdas[2] * tri_prob)
 
 
-            log_probs = math.log(probability, 2) if probability != 0 else 0
+            log_probs += math.log(probability, 2) if probability != 0 else 0
 
             total += 1
             
@@ -300,6 +299,11 @@ if __name__ == '__main__':
 
     with open('data/1b_benchmark.dev.tokens') as my_file:
         dev_data = my_file.readlines()
+    with open('data/1b_benchmark.test.tokens') as my_file:
+        test_data = my_file.readlines()
+
+    print(len(test_data))
+    print(len(dev_data))
 
     freqs = {
         "UNK": 0,
@@ -318,8 +322,8 @@ if __name__ == '__main__':
     trigram_count = get_tri_count(training_data, freqs)
     trigram_model = get_tri_model(trigram_count, bigram_count)
 
-    lambdas = [0.1, 0.3, 0.6]
-    smooth_pp = get_smoothed_pp(training_data, unigram_model, bigram_model, trigram_model, lambdas)
+    lambdas = [0.1, 0.9, 0]
+    smooth_pp = get_smoothed_pp(dev_data, unigram_model, bigram_model, trigram_model, lambdas)
     print("smooth_pp", smooth_pp)
 
     total = 0
