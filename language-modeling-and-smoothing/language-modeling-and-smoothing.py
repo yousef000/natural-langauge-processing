@@ -149,10 +149,10 @@ def get_tri_model(trigram_count, bigram_count):
 def get_uni_pp(freqs, data):
     total_freq = sum(freqs.values())
     l = 0
-    for i in data:
-        for j in i.split():
-            if j in freqs:
-                l += math.log2(unigram_model[j])
+    for sentence in data:
+        for word in sentence.split():
+            if word in freqs:
+                l += math.log2(unigram_model[word])
             else:
                 l += math.log2(unigram_model["UNK"])
     l *= 1/total_freq
@@ -235,6 +235,13 @@ def get_smoothed_pp(data, uni_model, bi_model, tri_model, lambdas):
     for sentence in data:
         words = sentence.split()
         for i in range(len(words) - 2):
+            if words[i] not in freqs:
+                words[i] = "UNK"
+            if i != len(words)-1 and words[i+1] not in freqs:
+                words[i+1] = "UNK"
+            if i != len(words)-2 and i != len(words)-1 and words[i+2] not in freqs:
+                words[i+2] = "UNK"
+                
             # unigram probability = probability of word in unigram model if in model otherwise 0
             uni_prob = uni_model.get(words[i], 0)
 
