@@ -152,9 +152,9 @@ def get_uni_pp(freqs, data):
     for i in data:
         for j in i.split():
             if j in freqs:
-                l += math.log(unigram_model[j])
+                l += math.log2(unigram_model[j])
             else:
-                l += math.log(unigram_model["UNK"])
+                l += math.log2(unigram_model["UNK"])
     l *= 1/total_freq
     unigram_pp = pow(2, -l)
     return unigram_pp
@@ -170,10 +170,23 @@ def get_bi_pp(freqs, data):
             if i != len(words)-1 and words[i+1] not in freqs:
                 words[i+1] = "UNK"
 
+            # There are no unseen words for the model, since unseen words 
+            # (words outside the vocabulary) are converted to UNK.  
+            # If the history followed by the current word hasn't been seen 
+            # before (that is, the sequence of history followed by the current
+            # word hasn't been seen before), then the probability will zero 
+            # in the bigram and trigram models.
+
             if i != len(words)-1:
-                l += math.log(bigram_model[words[i]][words[i+1]])
+                try:
+                    l += math.log2(bigram_model[words[i]][words[i+1]])
+                except KeyError:
+                    l += 0
             else:
-                l += math.log(bigram_model[words[i]]["<STOP>"])
+                try:
+                    l += math.log2(bigram_model[words[i]]["<STOP>"])
+                except KeyError:
+                    l += 0
             
     l *= 1/sum(freqs.values())
     bigram_pp = pow(2, -l )
@@ -192,14 +205,26 @@ def get_tri_pp(freqs, data):
             if i != len(words)-2 and i != len(words)-1 and words[i+2] not in freqs:
                 words[i+2] = "UNK"
             
-            ## if last word
+            # There are no unseen words for the model, since unseen words 
+            # (words outside the vocabulary) are converted to UNK.  
+            # If the history followed by the current word hasn't been seen 
+            # before (that is, the sequence of history followed by the current
+            # word hasn't been seen before), then the probability will zero 
+            # in the bigram and trigram models.
+
             if i == len(words)-1:
                 break
             if i == len(words)-2:
-                l += math.log(trigram_model[(words[i], words[i+1])]["<STOP>"])
+                try:
+                    l += math.log2(trigram_model[(words[i], words[i+1])]["<STOP>"])
+                except KeyError:
+                    l += 0
             else:
-                l += math.log(trigram_model[(words[i], words[i+1])][words[i+2]])
-            
+                try:
+                    l += math.log2(trigram_model[(words[i], words[i+1])][words[i+2]])
+                except KeyError:
+                    l += 0
+        
     l *= 1/sum(freqs.values())
     trigram_pp = pow(2, -l )
     return trigram_pp
@@ -247,6 +272,9 @@ if __name__ == '__main__':
     with open('data/1b_benchmark.train.tokens') as my_file:
         training_data = my_file.readlines()
 
+    with open('data/1b_benchmark.dev.tokens') as my_file:
+        dev_data = my_file.readlines()
+
     freqs = {
         "UNK": 0,
         "<STOP>": 0
@@ -276,6 +304,13 @@ if __name__ == '__main__':
     print("smooth_pp", smooth_pp)
 
     total = 0
+
+    unigram_pp = get_uni_pp(freqs, dev_data)
+    print("unigram_pp", unigram_pp)
+    bigram_pp = get_bi_pp(freqs, dev_data)
+    print("bigram_pp", bigram_pp)
+    trigram_pp = get_tri_pp(freqs, dev_data)
+    print("trigram_pp", trigram_pp)
     for i in unigram_model:
         total += unigram_model[i]
     print('total', total)
