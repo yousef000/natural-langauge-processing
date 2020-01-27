@@ -291,13 +291,6 @@ if __name__ == '__main__':
 
     trigram_count = get_tri_count(training_data, freqs)
     trigram_model = get_tri_model(trigram_count, bigram_count)
-    
-    # unigram_pp = get_uni_pp(freqs, training_data)
-    # print("unigram_pp", unigram_pp)
-    # bigram_pp = get_bi_pp(freqs, training_data)
-    # print("bigram_pp", bigram_pp)
-    # trigram_pp = get_tri_pp(freqs, training_data)
-    # print("trigram_pp", trigram_pp)
 
     lambdas = [0.1, 0.3, 0.6]
     smooth_pp = get_smoothed_pp(training_data, unigram_model, bigram_model, trigram_model, lambdas)
@@ -305,12 +298,14 @@ if __name__ == '__main__':
 
     total = 0
 
-    unigram_pp = get_uni_pp(freqs, dev_data)
-    print("unigram_pp", unigram_pp)
-    bigram_pp = get_bi_pp(freqs, dev_data)
-    print("bigram_pp", bigram_pp)
-    trigram_pp = get_tri_pp(freqs, dev_data)
-    print("trigram_pp", trigram_pp)
+    # unigram_pp = get_uni_pp(freqs, dev_data)
+    # print("unigram_pp", unigram_pp)
+    # bigram_pp = get_bi_pp(freqs, dev_data)
+    # print("bigram_pp", bigram_pp)
+    # trigram_pp = get_tri_pp(freqs, dev_data)
+    # print("trigram_pp", trigram_pp)
+
+
     for i in unigram_model:
         total += unigram_model[i]
     print('total', total)
