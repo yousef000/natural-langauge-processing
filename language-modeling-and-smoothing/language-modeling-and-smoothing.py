@@ -196,7 +196,7 @@ def get_tri_pp(freqs, data):
     l = 0
     for sentence in data:
         words = sentence.split()
-        for i in range(len(words)):
+        for i in range(len(words)-1):
             ## if word is unknown then change token to UNK
             if words[i] not in freqs:
                 words[i] = "UNK"
@@ -212,8 +212,6 @@ def get_tri_pp(freqs, data):
             # word hasn't been seen before), then the probability will zero 
             # in the bigram and trigram models.
 
-            if i == len(words)-1:
-                break
             if i == len(words)-2:
                 try:
                     l += math.log2(trigram_model[(words[i], words[i+1])]["<STOP>"])
@@ -234,34 +232,55 @@ def get_smoothed_pp(data, uni_model, bi_model, tri_model, lambdas):
     log_probs = 0
     for sentence in data:
         words = sentence.split()
-        for i in range(len(words) - 2):
+        for i in range(len(words)):
             if words[i] not in freqs:
                 words[i] = "UNK"
             if i != len(words)-1 and words[i+1] not in freqs:
                 words[i+1] = "UNK"
             if i != len(words)-2 and i != len(words)-1 and words[i+2] not in freqs:
                 words[i+2] = "UNK"
-                
+
             # unigram probability = probability of word in unigram model if in model otherwise 0
             uni_prob = uni_model.get(words[i], 0)
 
-            bi_word = words[i+1]
+            bi_prob = 0
+            bi_word = ""
+            if i == len(words) - 1:
+                bi_word = "<STOP>"
+            else:
+                bi_word = words[i+1]
             bi_context = words[i]
-            if bi_word in bi_model[bi_context]:
-                bi_prob = bi_model[bi_context][bi_word]
+
+            if i == len(words) - 1:
+                try:
+                    bi_prob += bi_model[bi_context]["<STOP>"]
+                except KeyError:
+                    bi_prob += 0
             else:
-                bi_prob = 0
+                try:
+                    bi_prob += bi_model[bi_context][bi_word]
+                except KeyError:
+                    bi_prob += 0
             
+            tri_prob = 0
             # tri_word is the random variable
-            tri_word = words[i+2]
-            # tri_context is the context (previous n=2 words)
-            tri_context = (words[i], words[i+1])
+            tri_word = ""
+            if i == len(words) - 2:
+                tri_word = "<STOP>"
+                # tri_context is the context (previous n=2 words)
+                tri_context = (words[i], words[i+1])
+            elif i != len(words) - 1:
+                tri_word = words[i+2]
+                # tri_context is the context (previous n=2 words)
+                tri_context = (words[i], words[i+1])
+                
 
-            if tri_word in tri_model[tri_context]:
-                tri_prob = tri_model[tri_context][tri_word]
-            else:
-                tri_prob = 0
+            try:
+                tri_prob += tri_model[tri_context][tri_word]
+            except KeyError:
+                tri_prob += 0
 
+            print("uni_prob ", uni_prob)
             probability = (lambdas[0] * uni_prob) + (lambdas[1] * bi_prob) + (lambdas[2] * tri_prob)
 
 
