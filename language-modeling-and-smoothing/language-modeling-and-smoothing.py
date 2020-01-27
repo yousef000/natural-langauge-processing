@@ -204,6 +204,44 @@ def get_tri_pp(freqs, data):
     trigram_pp = pow(2, -l )
     return trigram_pp
 
+def get_smoothed_pp(data, uni_model, bi_model, tri_model, lambdas):
+    total = 0
+    log_probs = 0
+    for sentence in data:
+        words = sentence.split()
+        for i in range(len(words) - 2):
+            # unigram probability = probability of word in unigram model if in model otherwise 0
+            uni_prob = uni_model.get(words[i], 0)
+
+            bi_word = words[i+1]
+            bi_context = words[i]
+            if bi_word in bi_model[bi_context]:
+                bi_prob = bi_model[bi_context][bi_word]
+            else:
+                bi_prob = 0
+            
+            # tri_word is the random variable
+            tri_word = words[i+2]
+            # tri_context is the context (previous n=2 words)
+            tri_context = (words[i], words[i+1])
+
+            if tri_word in tri_model[tri_context]:
+                tri_prob = tri_model[tri_context][tri_word]
+            else:
+                tri_prob = 0
+
+            probability = (lambdas[0] * uni_prob) + (lambdas[1] * bi_prob) + (lambdas[2] * tri_prob)
+
+
+            log_probs = math.log(probability, 2) if probability != 0 else 0
+
+            total += 1
+            
+    pp = math.pow(2, -(log_probs / total))
+    return pp
+    
+
+
 if __name__ == '__main__':
 
     with open('data/1b_benchmark.train.tokens') as my_file:
@@ -226,12 +264,17 @@ if __name__ == '__main__':
     trigram_count = get_tri_count(training_data, freqs)
     trigram_model = get_tri_model(trigram_count, bigram_count)
     
-    unigram_pp = get_uni_pp(freqs, training_data)
-    print("unigram_pp", unigram_pp)
-    bigram_pp = get_bi_pp(freqs, training_data)
-    print("bigram_pp", bigram_pp)
-    trigram_pp = get_tri_pp(freqs, training_data)
-    print("trigram_pp", trigram_pp)
+    # unigram_pp = get_uni_pp(freqs, training_data)
+    # print("unigram_pp", unigram_pp)
+    # bigram_pp = get_bi_pp(freqs, training_data)
+    # print("bigram_pp", bigram_pp)
+    # trigram_pp = get_tri_pp(freqs, training_data)
+    # print("trigram_pp", trigram_pp)
+
+    lambdas = [0.1, 0.3, 0.6]
+    smooth_pp = get_smoothed_pp(training_data, unigram_model, bigram_model, trigram_model, lambdas)
+    print("smooth_pp", smooth_pp)
+
     total = 0
     for i in unigram_model:
         total += unigram_model[i]
