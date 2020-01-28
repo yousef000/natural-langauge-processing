@@ -18,13 +18,11 @@ def get_freq(freqs, data):
                 freqs[word] += 1
             else:
                 freqs[word] = 1
-    print(sum(freqs.values()))
 
-    remove = [key for key in freqs if freqs[key] < 100 and key != "UNK"]
+    remove = [key for key in freqs if freqs[key] < 3 and key != "UNK"]
     for key in remove:
         del freqs[key]
         freqs["UNK"] += 1
-    print(freqs["UNK"])
     return freqs
 
 
@@ -137,15 +135,6 @@ def get_tri_model(data, bigram_count):
                 key[2]: probability
             }
     return trigram_model
-
-# 1/M ∑∑log2(p(xij))
-    # Where M is the same. The outer sum is the same as before,
-    # summing over all sentences in the file (assuming m sentences).
-    # The second sum sums over all tokens in the current sentence
-    # (this can be implemented as a nested for loop) (assuming k tokens
-    # in a sentence, this will obviously be different in each sentence).
-    # p(xij) is the probability of the current token in the current
-    # sentence, which is given by the n-gram MLE for the n you are using
 
 
 def get_uni_pp(freqs, data):
@@ -315,16 +304,43 @@ def get_smoothed_pp(data, uni_model, bi_model, tri_model, lambdas):
     pp = math.pow(2, -(log_probs / total))
     return pp
 
+def get_best_hyperparameters(lambdas, training_data, dev_data, unigram_model, bigram_model, trigram_model):
+    best_lambda_set = []
+    lowest_perp = 1000000
+
+    print("Testing Lambda Sets on Development Data--------------------------")
+    print("")
+
+    for lam in lambdas:
+        smooth_dev_pp = get_smoothed_pp(
+            dev_data, unigram_model, bigram_model, trigram_model, lam)
+        smooth_training_pp = get_smoothed_pp(
+            training_data, unigram_model, bigram_model, trigram_model, lam)
+        
+        if smooth_dev_pp < lowest_perp:
+            lowest_perp = smooth_dev_pp
+            best_lambda_set = lam
+
+        print('Lambda Set: ', lam, ', Training Perplexity: ', smooth_training_pp)
+        print('Lambda Set: ', lam, ', Dev Perplexity: ', smooth_dev_pp)
+    
+
+    print("")
+    print("Best Lambda Set is ", best_lambda_set,
+          " with perplexity of ", lowest_perp)
+    print("")
+    return best_lambda_set
+
 def print_pp(data, freqs, name):
-    print("Running Perplexity on Unigram Model with ", name, " Data -----------")
+    print(" ")
+    print("Runnin Perplexities with", name, "Data-----------------------------")
+    print(" ")
     unigram_pp = get_uni_pp(freqs, data)
-    print("Unigram Perplexity: ", unigram_pp)
-    print("Running Perplexity on Bigram Model with ", name, " Data -----------")
+    print("Unigram Perplexity with", name, "Data: ", unigram_pp)
     bigram_pp = get_bi_pp(freqs, data)
-    print("Bigram Perplexity", bigram_pp)
-    print("Running Perplexity on Trigram Model with ", name, " Data -----------")
+    print("Bigram Perplexity with", name, "Data", bigram_pp)
     trigram_pp = get_tri_pp(freqs, data)
-    print("Trigram Perplexity: ", trigram_pp)
+    print("Trigram Perplexity with", name, "Data: ", trigram_pp)
     return unigram_pp + bigram_pp + trigram_pp
 
 if __name__ == '__main__':
@@ -357,33 +373,13 @@ if __name__ == '__main__':
     plt.title("<100 (unsmoothed)")
     plt.show()
     '''
-
-
+    
     lambdas = [[0.1, 0.3, 0.6], [0.1, 0.9, 0], [
         0.3, 0.3, 0.4], [0.6, 0.3, 0.1], [1, 0, 0]]
-
-    best_lambda_set = []
-    lowest_perp = 1000000
-
-    for lam in lambdas:
-        smooth_dev_pp = get_smoothed_pp(
-            dev_data, unigram_model, bigram_model, trigram_model, lam)
-        smooth_training_pp = get_smoothed_pp(
-            training_data, unigram_model, bigram_model, trigram_model, lam)
-        
-        if smooth_dev_pp < lowest_perp:
-            lowest_perp = smooth_dev_pp
-            best_lambda_set = lam
-
-        print('Lambda Set: ', lam, ', Training Perplexity: ', smooth_training_pp)
-        print('Lambda Set: ', lam, ', Dev Perplexity: ', smooth_dev_pp)
-    
-
-    print("Best Lambda Set is ", best_lambda_set,
-          " with perplexity of ", lowest_perp)
-
+    best_lambda_set = get_best_hyperparameters(lambdas, training_data, dev_data, unigram_model, 
+                                                                        bigram_model, trigram_model)
     smoothed_perp = get_smoothed_pp(
         test_data, unigram_model, bigram_model, trigram_model, best_lambda_set)
-
     print("Running Smoothed Perplexity on Test Data with best Lambda Set -----------")
+    print("")
     print("Lambda Set: ", best_lambda_set, ", Perplexity: ", smoothed_perp)
